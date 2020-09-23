@@ -26,7 +26,6 @@ public class TracerouteAnalysis {
 		first = true;
 		} while(!f.canRead());
 		sc.close();
-		System.out.println("Valid filename.");
 		try {
 			Scanner scanner = new Scanner(f); //Scanner to read file
 			while (scanner.hasNext()) { //Make sure end of file is not reached
