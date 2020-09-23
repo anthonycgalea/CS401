@@ -11,6 +11,10 @@ public class TracerouteAnalysis {
 		System.out.println("Hello! What filename would you like to analyze the connection?");
 		String filePath = null;
 		boolean first = false;
+		int[] hist = new int[30];
+		for (int i = 0; i < 30; i++) {
+			hist[i] = 0;
+		}
 		ArrayList<Traceroute> traceroutes = new ArrayList<>();
 		File f;
 		do {
@@ -49,7 +53,9 @@ public class TracerouteAnalysis {
 			if (traceroutes.get(j).reachable()) {
 				count++;
 				sumDelay += traceroutes.get(j).getAverageDelay();
-				totHops += traceroutes.get(j).hops();
+				int hop = traceroutes.get(j).hops();
+				totHops += hop;
+				hist[hop+1]++;
 			}
 		}
 		float aveDelay = sumDelay/count;
@@ -69,6 +75,16 @@ public class TracerouteAnalysis {
 			fw.write(String.format("Average link delay:\t%.14f ms\n", aveLinkDelay));
 			fw.flush();
 			fw.close();
+			File histOutputFile = new File("hist.txt");
+			histOutputFile.delete();
+			histOutputFile.createNewFile();
+			FileWriter fw2 = new FileWriter("hist.txt");
+			fw2.flush();
+			for (int i = 0; i < 30; i++) {
+				fw2.write(String.format("%d:\t%d\n", i+1, hist[i]));
+			}
+			fw2.flush();
+			fw2.close();
 		} catch (Exception e) {
 			System.out.println("File error.");
 		}
