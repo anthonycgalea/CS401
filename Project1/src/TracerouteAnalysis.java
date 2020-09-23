@@ -1,11 +1,12 @@
 import java.io.File;
+import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.Scanner;
 
 public class TracerouteAnalysis {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		// DONE Auto-generated method stub
 		Scanner sc = new Scanner(System.in);
 		System.out.println("Hello! What filename would you like to analyze the connection?");
 		String filePath = null;
@@ -41,6 +42,34 @@ public class TracerouteAnalysis {
 		} catch (Exception e) {
 			System.out.println("File error.");
 		}
+		float sumDelay = 0;
+		float totHops = 0;
+		int count = 0;
+		for (int j = 0; j < traceroutes.size(); j++) {
+			if (traceroutes.get(j).reachable()) {
+				count++;
+				sumDelay += traceroutes.get(j).getAverageDelay();
+				totHops += traceroutes.get(j).hops();
+			}
+		}
+		float aveDelay = sumDelay/count;
+		float aveHops = totHops/count;
+		float aveLinkDelay = 0;
+		System.out.printf("Average number of hops:\t%.14f hops\n", aveHops);
+		System.out.printf("Grand Average delay:\t%.14f ms\n", aveDelay);
+		System.out.printf("Grand Average delay:\t%.14f ms\n", aveLinkDelay);
+		try {
+			File avgOutputFile = new File("avg.txt");
+			avgOutputFile.delete();
+			avgOutputFile.createNewFile();
+			FileWriter fw = new FileWriter("avg.txt");
+			fw.write(String.format("Average number of hops:\t%.14f hops\n", aveHops));
+			fw.write(String.format("Grand Average delay:\t%.14f ms\n", aveDelay));
+			fw.write(String.format("Grand Average delay:\t%.14f ns\n", aveLinkDelay));
+			fw.close();
+		} catch (Exception e) {
+			System.out.println("File error.");
+		}
 	}
 
 }
@@ -50,16 +79,18 @@ class Traceroute {
 	ArrayList<String> lines;
 	boolean foundEnd;
 	private String ip;
-	private double averageDelay;
+	private float averageDelay;
+	public ArrayList<Float> delays;
 
 	public Traceroute(String firstLine) {
 		ip = findIp(firstLine);
 		this.lines = new ArrayList<>();
 		foundEnd = false;
+		this.delays = new ArrayList<>();
 	}
 
 	private String findIp(String firstLine) {
-		String[] sections = firstLine.split("(|)");
+		String[] sections = firstLine.split("\\(|\\)");
 		return sections[1];
 	}
 
@@ -77,34 +108,36 @@ class Traceroute {
 
 	public void addLine(String s) {
 		this.lines.add(s);
-		String[] sections = s.split("(|)");
+		String[] sections = s.split("\\(|\\)");
 		for (int i = 1; i < sections.length; i = i + 2) {
 			if (sections[i].equals(this.ip)) {
 				this.foundEnd = true;
 				System.out.println("Traceroute Complete!");
 				calcAverageDelay();
-				System.out.println("Average delay:\t" + this.averageDelay);
+				System.out.printf("Average delay:\t%.3f\n", this.averageDelay);
 			}
 		}
 	}
 
 	public void calcAverageDelay() {
 		String lastLine = this.lines.get(this.lines.size() - 1);
-		ArrayList<Double> delays = new ArrayList<>();
+		ArrayList<Float> delays = new ArrayList<>();
 		String[] split = lastLine.split(" ");
 		for (int i = 1; i < split.length; i++) {
 			if (split[i].equals("ms")) {
-				delays.add(Double.parseDouble(split[i - 1]));
+				delays.add(Float.parseFloat(split[i - 1]));
+				this.delays.add(Float.parseFloat(split[i - 1]));
 			}
 		}
-		int i, sum = 0;
+		int i;
+		float sum = 0;
 		for (i = 0; i < delays.size(); i++) {
 			sum += delays.get(i);
 		}
 		this.averageDelay = sum / i;
 	}
 
-	public double getAverageDelay() {
+	public float getAverageDelay() {
 		return this.averageDelay;
 	}
 }
