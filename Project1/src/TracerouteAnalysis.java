@@ -39,11 +39,19 @@ public class TracerouteAnalysis {
 			scanner.close(); //close scanner
 		} catch (Exception e) {
 			System.out.println("File error."); //exception handling
+			e.printStackTrace();
 		}
 		float sumDelay = 0; //for adding up the total delays
 		float totHops = 0; //for adding up the total hops of reachable websites
 		int count = 0; //counter for division
+		int linkCounter = 0; //counter for adding each valid hop
+		float sumLinkDelay = 0; //counter for adding each valid link delay
 		for (int j = 0; j < traceroutes.size(); j++) {
+			linkCounter += traceroutes.get(j).linkDelays.size();
+			for (int k = 0; k < traceroutes.get(j).linkDelays.size(); k++) {
+				sumLinkDelay += traceroutes.get(j).linkDelays.get(k);
+			}
+			
 			if (traceroutes.get(j).reachable()) { //check if the current traceroute was reachable
 				count++; //add one to counter
 				sumDelay += traceroutes.get(j).getAverageDelay(); //add average delay to sum
@@ -52,9 +60,10 @@ public class TracerouteAnalysis {
 				hist[hop+1]++; //for histogram
 			}
 		}
+		
 		float aveDelay = sumDelay/count; //calculate average delay
 		float aveHops = totHops/count; //calculate average hops
-		float aveLinkDelay = 0; //calculate average link delay
+		float aveLinkDelay = sumLinkDelay / linkCounter; //calculate average link delay
 		System.out.printf("Average link delay:\t%.14f ms\n", aveLinkDelay);
 		try {
 			File avgOutputFile = new File("avg.txt"); //create file object
@@ -92,12 +101,18 @@ class Traceroute {
 	private String ip;
 	private float averageDelay;
 	public ArrayList<Float> delays;
+	public ArrayList<Float> linkDelays;
+	public ArrayList<Integer> linkDHops;
+	private float mostRLDelay;
+	private int newValidHop;
 
 	public Traceroute(String firstLine) { //constructor
 		this.ip = findIp(firstLine); //find ip
 		this.lines = new ArrayList<>(); //create new arrayList object for holding lines
+		this.linkDelays = new ArrayList<>();
 		foundEnd = false; //indicator whether this traceroute found the destination
 		this.delays = new ArrayList<>(); //new arraylist for delays
+		this.linkDHops = new ArrayList<>();
 	}
 
 	private String findIp(String firstLine) {
@@ -119,6 +134,35 @@ class Traceroute {
 
 	public void addLine(String s) {
 		this.lines.add(s);
+		String[] delaySplit = s.split(" ");
+		int count = 0;
+		float delaySum = 0;
+		for (int i = 1; i < delaySplit.length; i++) {
+			if (delaySplit[i].equals("ms")) {
+				count++;
+				delaySum+= Float.parseFloat(delaySplit[i-1]);
+			}
+		}
+		int hop;
+		if (lines.size() < 10) {
+			hop = Integer.parseInt(delaySplit[1]);
+		} else {
+			hop = Integer.parseInt(delaySplit[0]);
+		}
+		if (linkDelays.size() > 0 && delaySum > 0 && hop-this.newValidHop == 1 && (delaySum/count) > this.mostRLDelay) { //checks if a hop is adjacent to the last recorded hop
+			this.linkDelays.add((delaySum/count)-this.mostRLDelay);
+			this.mostRLDelay = delaySum / count;
+			this.newValidHop = hop;
+			this.linkDHops.add(hop);
+		} else if (delaySum > 0 && linkDHops.size() == 0) { //the first hop
+			this.linkDelays.add((delaySum/count));
+			this.linkDHops.add(hop);
+			this.newValidHop = hop;
+			this.mostRLDelay = delaySum / count;
+		} else if (delaySum > 0) { //for storing most recent hop in case reachable websites pop up immediately after
+			this.newValidHop = hop;
+			this.mostRLDelay = delaySum / count;
+		} 
 		String[] sections = s.split("\\(|\\)"); //regex to find ips in line
 		for (int i = 1; i < sections.length; i = i + 2) { //ips will be between parentheses
 			if (sections[i].equals(this.ip)) { //checks if ips are equal

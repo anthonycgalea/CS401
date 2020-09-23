@@ -1,0 +1,3 @@
+Average number of hops:	10.37209320068359 hops
+Average delay:	40.00486755371094 ms
+Average link delay:	8.01688861846924 ms
