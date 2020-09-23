@@ -56,16 +56,18 @@ public class TracerouteAnalysis {
 		float aveHops = totHops/count;
 		float aveLinkDelay = 0;
 		System.out.printf("Average number of hops:\t%.14f hops\n", aveHops);
-		System.out.printf("Grand Average delay:\t%.14f ms\n", aveDelay);
-		System.out.printf("Grand Average delay:\t%.14f ms\n", aveLinkDelay);
+		System.out.printf("Average delay:\t%.14f ms\n", aveDelay);
+		System.out.printf("Average link delay:\t%.14f ms\n", aveLinkDelay);
 		try {
 			File avgOutputFile = new File("avg.txt");
 			avgOutputFile.delete();
 			avgOutputFile.createNewFile();
 			FileWriter fw = new FileWriter("avg.txt");
+			fw.flush();
 			fw.write(String.format("Average number of hops:\t%.14f hops\n", aveHops));
-			fw.write(String.format("Grand Average delay:\t%.14f ms\n", aveDelay));
-			fw.write(String.format("Grand Average delay:\t%.14f ns\n", aveLinkDelay));
+			fw.write(String.format("Average delay:\t%.14f ms\n", aveDelay));
+			fw.write(String.format("Average link delay:\t%.14f ms\n", aveLinkDelay));
+			fw.flush();
 			fw.close();
 		} catch (Exception e) {
 			System.out.println("File error.");
