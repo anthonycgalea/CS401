@@ -30,6 +30,9 @@ public class TracerouteAnalysis {
 			while (scanner.hasNext()) { //Make sure end of file is not reached
 				String s = scanner.nextLine(); //Check next line
 				if (s.split(" ")[0].equals("traceroute")) {  //traceroute indicates new traceroute
+					if (traceroutes.size() > 0) {
+						traceroutes.get(traceroutes.size()-1).checkEndFound();
+					}
 					traceroutes.add(new Traceroute(s)); //create new traceroute object
 				} else {
 					traceroutes.get(traceroutes.size()-1).addLine(s); //if not new one add line to traceroute
@@ -56,7 +59,7 @@ public class TracerouteAnalysis {
 				sumDelay += traceroutes.get(j).getAverageDelay(); //add average delay to sum
 				int hop = traceroutes.get(j).hops(); //get hops
 				totHops += hop; //add hops
-				hist[hop+1]++; //for histogram
+				//hist[hop+1]++; //for histogram
 			}
 		}
 		
@@ -157,6 +160,11 @@ class Traceroute {
 			this.newValidHop = hop;
 			this.mostRLDelay = delaySum / count;
 		} 
+		
+	}
+	
+	public void checkEndFound() {
+		String s = this.lines.get(this.lines.size()-1);
 		String[] sections = s.split("\\(|\\)"); //regex to find ips in line
 		for (int i = 1; i < sections.length; i = i + 2) { //ips will be between parentheses
 			if (sections[i].equals(this.ip)) { //checks if ips are equal
