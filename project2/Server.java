@@ -25,10 +25,10 @@ public class Server {
 
 		// First, let's start our server and bind it to a port(5000).
 
-		Server s = new Server();
+		Server s = new Server(); //create server object
 		try {
-			s.listener = new ServerSocket(5000);
-			new Thread(new ServerSocketHandler(s, s.connectionList)).start();
+			s.listener = new ServerSocket(5000); //create listener on server
+			new Thread(new ServerSocketHandler(s, s.connectionList)).start(); //create thread to listen to connections
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;
@@ -42,30 +42,42 @@ public class Server {
 
 		// Done! Now main() will just loop for user input!.
 		boolean notQuit = true;
-		Scanner sc = new Scanner(System.in);
+		Scanner sc = new Scanner(System.in); //take input
+		char command;
 		while (notQuit) {
 
 			// wait on user inputs
-			char command = sc.nextLine().charAt(0);
+			String input = sc.nextLine();
+    		if (input.length() >= 1) { //so blank entries don't break it
+    			command = input.charAt(0);
+    		} else {
+    			System.out.println("Invalid command. Please try again. Valid commands:\nf:\trequest file\nq:\tquit");
+    			sc.nextLine();
+    			command = 'a';
+    		}
 			// wait for user commands.
 			switch (command) {
-			case 'q': {
-				for (int i = 0; i < s.connectionList.size(); i++) {
-					s.connectionList.get(i).closeConnection();
-					
-				}
-				notQuit = false;
-				break;
-			}
-			case 'p': {
-				System.out.println("Clients connected:");
-				for (int i = 0; i < s.connectionList.size(); i++) {
-					if (s.connectionList.get(i).isAlive()) {
-						System.out.println("User id:\t" + s.connectionList.get(i).peerID + "\tFile Vector:\t" + s.connectionList.get(i).FILE_VECTOR.toString());
+				case 'q': { //quit
+					for (int i = 0; i < s.connectionList.size(); i++) {
+						s.connectionList.get(i).closeConnection();
 					}
+					System.exit(0); //kill program
+					notQuit = false;
+					break;
 				}
-				break;
-			}
+				case 'p': { //print active connections
+					System.out.println("Clients connected:");
+					for (int i = 0; i < s.connectionList.size(); i++) {
+						if (s.connectionList.get(i).socket.isConnected()) {
+							String str = "";
+							for (int j = 0; j < s.connectionList.get(i).FILE_VECTOR.length; j++) {
+								str+=s.connectionList.get(i).FILE_VECTOR[j];
+							}
+							System.out.println("User id:\t" + s.connectionList.get(i).peerID + "\tFile Vector:\t" + str);
+						}
+					}
+					break;
+				}
 			}
 		}
 		// will quit on user input

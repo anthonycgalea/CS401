@@ -70,22 +70,31 @@ public class Client {
     	}
     	
     	//DONE: start a thread to handle server responses. This class is not provided. You can create a new class called ClientPacketHandler to process these requests.
-    	new Thread(new ClientPacketHandler(c)).start();
+    	ClientPacketHandler cph = new ClientPacketHandler(c);
+    	new Thread(cph).start();
         //done! now loop for user input
         Scanner sc = new Scanner(System.in);
         boolean noQuit = true;
-    	while (noQuit){
-               char command = sc.nextLine().charAt(0);
+        char command;
+    	while (noQuit && cph.killProgram == false){
+    		String input = sc.nextLine();
+    		if (input.length() >= 1) {
+    			command = input.charAt(0);
+    		} else {
+    			System.out.println("Invalid command. Please try again. Valid commands:\nf:\trequest file\nq:\tquit");
+    			sc.nextLine();
+    			command = 'a';
+    		}
                // wait for user commands.
                switch (command)
                {
                    
                    case 'f': {// user is requesting a file 
                 	   int index = -1;
-                	   while(index <0 && index >= c.FILE_VECTOR.length) {
+                	   do {
                 		   System.out.print("\nPlease enter file index requested:\t");
                 		   index = Integer.parseInt(sc.nextLine());
-                	   }
+                	   } while (index <0 && index >= c.FILE_VECTOR.length);
                 	   if (c.containsFile(index) == c.peerID) {
                 		   System.out.println("I already have file " + index);
                 	   } else {
@@ -121,9 +130,10 @@ public class Client {
                 		   c.outputStream.flush();
                 		   c.outputStream.reset();
                 		   //wait for server to close connection
-                		   while(true) {
+                		   boolean running = true;
+                		   while(running) {
                 			   if (!c.s.isConnected()) {
-                				   break;
+                				   running = false;
                 			   }
                 		   }
             		   } catch (IOException e) {
@@ -145,8 +155,9 @@ public class Client {
  
     // implement other methods as necessary
 
+    //to see if we already have the file
     public int containsFile(int index) {
-    	if (this.FILE_VECTOR[index] == 1) {
+    	if (this.FILE_VECTOR[index] == '1') {
     		return this.peerID;
     	} else {
     		return -1;
@@ -155,16 +166,19 @@ public class Client {
     }
 }
 
+//handles commands from server
 class ClientPacketHandler implements Runnable {
 	Client client;
+	boolean killProgram;
 	ClientPacketHandler(Client client) {
 		this.client = client;
+		this.killProgram = false;
 	}
 	@Override
 	public void run() {
 		// TODO Auto-generated method stub
 		Packet p;
-        while (true){
+        while (client.s.isConnected()){ //while connection is active, read packets from server
             try { 
                 p = (Packet) this.client.inputStream.readObject();
                 eventHandler(p);
@@ -180,17 +194,26 @@ class ClientPacketHandler implements Runnable {
 		// TODO Auto-generated method stub
 		int event_type = p.event_type;
         switch (event_type) {
-	        case 2: {
-	        	System.out.println("User #" + p.peerID + " has packet " + p.req_file_index);
+	        case 2: { //reply from server for requested file
+	        	
+	        	if (p.peerID == -1) {
+	        		System.out.println("No user on the network has the requested file.");
+	        	} else {
+	        		System.out.println("User #" + p.peerID + " has packet " + p.req_file_index);
+	        	}
+	        	break;
 	        }
-        	case 6: {
+        	case 6: { //server requests to close connection
 	        	try {
-	        		System.out.println("Server is asking to quit");
+	        		System.out.println("Server is closing connection.");
 					client.s.close();
+					this.killProgram = true;
+					System.exit(0); //kill java program
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+	        	break;
         	}
         }
 	}

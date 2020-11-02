@@ -19,22 +19,15 @@ class ServerSocketHandler extends Thread
         while (true){
            // wait for incoming connections. Start a new Connection Thread for each incoming connection.
         	try {
-    			
-    			// Next let's start a thread that will handle incoming connections
-
-    			clientSocket = s.listener.accept();
-    			Connection c = new Connection(clientSocket, s.connectionList);
-    			c.inputStream = new ObjectInputStream(c.inputStream);
-    			c.outputStream = new ObjectOutputStream(c.outputStream);
-    			s.connectionList.add(c);
-    			new Thread(c).start();
+    			clientSocket = s.listener.accept(); //wait for new connection
+    			Connection c = new Connection(clientSocket, s.connectionList); //create connection object
+    			s.connectionList.add(c); //add to ConnectionList
+    			new Thread(c).start(); //start thread with connection
     		} catch (IOException e) {
     			// DONE Auto-generated catch block
     			e.printStackTrace();
     		}
         }
     }
-    
-    //other methods may be necessary. Include them when appropriate.
 
 }
