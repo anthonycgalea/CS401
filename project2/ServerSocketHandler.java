@@ -2,7 +2,6 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 class ServerSocketHandler extends Thread
 {
@@ -18,7 +17,21 @@ class ServerSocketHandler extends Thread
     public void run(){
         Socket clientSocket;
         while (true){
-           // wait for incoming connectioins. Start a new Connection Thread for each incoming connection.
+           // wait for incoming connections. Start a new Connection Thread for each incoming connection.
+        	try {
+    			
+    			// Next let's start a thread that will handle incoming connections
+
+    			clientSocket = s.listener.accept();
+    			Connection c = new Connection(clientSocket, s.connectionList);
+    			c.inputStream = new ObjectInputStream(c.inputStream);
+    			c.outputStream = new ObjectOutputStream(c.outputStream);
+    			s.connectionList.add(c);
+    			new Thread(c).start();
+    		} catch (IOException e) {
+    			// DONE Auto-generated catch block
+    			e.printStackTrace();
+    		}
         }
     }
     

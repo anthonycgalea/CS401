@@ -1,47 +1,8 @@
-// The client class will implemnet the functions listed in the project description. 
+// The client class will implement the functions listed in the project description. 
 import java.io.*;
 import java.net.*;
-import java.util.*;
-import java.util.concurrent.*;
-import java.lang.*; 
+import java.util.*; 
 
-/*
- * TODO:
- * Initialization. The client will be invoked with a command line which contains two arguments. The first argument may be 
- * the server’s IP address in dotted decimal notation (127.0.0.1) or the server’s domain name (localhost). The second 
- * argument is the name of a config file which the client reads to find its ID, the server’s listening port, its own listening 
- * port, and its initial file vector; the client should print out such information. The config files are different for different 
- * clients and will be supplied by me. For example, the client program can be run by using the following command. java Client 
- * localhost clientconfig1.txt (Note: this is slightly different from the way I start the client in the demo video, but stick to this notation)
- * 
- * 
- * TODO: 
- * Connect to the server. The client tries to connect to the server by first creating a socket and supplying the server IP and port number.
- * If the connection is successful, the client prints out a success message; otherwise it quits. In this assignment, all connections are TCP.
- * 
- * TODO:
- * Report to the server. Once connection has been established, the client then sends the server a message with information of its id, its 
- * listening port, and the file vector. The client does this by creating a Packet object (attributes specified in the supplied Packet class)
- *  and send the packet to the server.
- * 
- * TODO: 
- * Wait for commands. The client enters an infinite loop. The client will get user inputs and may also get messages from the server. It accepts two commands, "f" and "q":
- * 
- * If the user types "f", the client will ask which file the user wants and the user will input the file index. If the user inputs, say, 10, the client first checks if it 
- * has file 10. If yes, it prints out a message like "I already have file 10." Otherwise, it sends a message to the server requesting the ID of a client who has file 10. 
- * The server will reply with the ID of a client who has file 10 (-1 if no client has the file). After receiving the server’s message, the client prints out the id of the 
- * client who has the file, then waits for the next command.
- * 
- * If the user types "q", the client quits: a) it first sends the server a message saying that it wishes to quit, b) waits until server closes the connection, c) terminate the program.
- * 
- * TODO: 
- * Auxiliary functions. The client also reads commands from the server. For this project there is only one command: quit. If the server sends the client this command, 
- * the client will close the connection by calling the close() function and exit.
- * 
- * 
- * 
- * 
- */
 public class Client {
 
      int serverPort = 5000;
@@ -57,25 +18,181 @@ public class Client {
     public static void main(String args[])
     {
         // parse client config and server ip.
-        // create client object and connect to server. If successfull, print success message , otherwise quit.
     	Client c = new Client();
+    	String ip = args[0];
     	try {
-        c.s = new Socket(args[0], 5000);
+    		File f = new File(args[1]);
+    		Scanner fileRead = new Scanner(f);
+    		while(fileRead.hasNext()) {
+    			String s = fileRead.nextLine();
+    			if (s.split(" ")[0].equals("CLIENTID")) {
+    				c.peerID = Integer.parseInt(s.split(" ")[1]);
+    			} else if (s.split(" ")[0].equals("SERVERPORT")) {
+    				c.serverPort = Integer.parseInt(s.split(" ")[1]);
+    			} else if (s.split(" ")[0].equals("MYPORT")) {
+    				c.peer_listen_port = Integer.parseInt(s.split(" ")[1]);
+    			} else if (s.split(" ")[0].equals("FILE_VECTOR")) {
+    				c.FILE_VECTOR = s.split(" ")[1].toCharArray();
+    			}
+    		}
+    		fileRead.close();
+    	} catch (IOException e) {
+    		System.out.println("Invalid file. Please try again. Proper notation is java Client [IP Address] [config file]");
+    		return;
+    	}
+        // create client object and connect to server. If successful, print success message , otherwise quit.
+    	try {
+    		c.s = new Socket(ip, c.serverPort);
+    		c.outputStream = new ObjectOutputStream(c.s.getOutputStream());
+    		c.inputStream = new ObjectInputStream(c.s.getInputStream());
+    		System.out.println("Connected successfully!");
+    		
     	} catch (IOException e) {
     		c.s = null;
+    		System.out.println("Invalid Socket Attempt. Please try again. Proper notation is java Client [IP Address] [config file]");
+    		return;
     	}
         // Once connected, send registration info, event_type=0
-       // start a thread to handle server responses. This class is not provided. You can create a new class called ClientPacketHandler to process these requests.
-       
+    	Packet p = new Packet();
+    	p.event_type = 0;
+    	p.FILE_VECTOR = c.FILE_VECTOR;
+    	p.peer_listen_port = c.peer_listen_port;
+    	p.sender = c.peerID;
+    	try {
+    		c.outputStream.flush();
+    		c.outputStream.reset();
+    		c.outputStream.writeObject(p);
+    		c.outputStream.flush();
+    		c.outputStream.reset();
+    	} catch (IOException e) {
+    		System.out.println("Error sending packet.");
+    		return;
+    	}
+    	
+    	//DONE: start a thread to handle server responses. This class is not provided. You can create a new class called ClientPacketHandler to process these requests.
+    	new Thread(new ClientPacketHandler(c)).start();
         //done! now loop for user input
-            while (true){
-                
+        Scanner sc = new Scanner(System.in);
+        boolean noQuit = true;
+    	while (noQuit){
+               char command = sc.nextLine().charAt(0);
                // wait for user commands.
+               switch (command)
+               {
+                   
+                   case 'f': {// user is requesting a file 
+                	   int index = -1;
+                	   while(index <0 && index >= c.FILE_VECTOR.length) {
+                		   System.out.print("\nPlease enter file index requested:\t");
+                		   index = Integer.parseInt(sc.nextLine());
+                	   }
+                	   if (c.containsFile(index) == c.peerID) {
+                		   System.out.println("I already have file " + index);
+                	   } else {
+                		   System.out.println("Requesting file " + index);
+                		   Packet requestPacket = new Packet();
+                		   requestPacket.event_type = 1;
+                		   requestPacket.sender = c.peerID;
+                		   requestPacket.req_file_index = index;
+                		   try {
+	                		   c.outputStream.flush();
+	                		   c.outputStream.reset();
+	                		   c.outputStream.writeObject(requestPacket);
+	                		   c.outputStream.flush();
+	                		   c.outputStream.reset();
+                		   } catch (IOException e) {
+                			   e.printStackTrace();
+                			   System.out.println("Error.");
+                		   }
+                	   }
+                	   break;
+                   }
+
+                   case 'q': {// user wants to quit
+                	   noQuit=false;
+                	   System.out.println("Quitting");
+            		   Packet quitPacket = new Packet();
+            		   quitPacket.event_type = 5;
+            		   quitPacket.sender = c.peerID;
+            		   try {
+                		   c.outputStream.flush();
+                		   c.outputStream.reset();
+                		   c.outputStream.writeObject(quitPacket);
+                		   c.outputStream.flush();
+                		   c.outputStream.reset();
+                		   //wait for server to close connection
+                		   while(true) {
+                			   if (!c.s.isConnected()) {
+                				   break;
+                			   }
+                		   }
+            		   } catch (IOException e) {
+            			   e.printStackTrace();
+            			   System.out.println("Error.");
+            		   }
+                	   break;
+                   	}
+                   
+                   default:
+                	   System.out.println("Invalid command. Please try again. Valid commands:\nf:\trequest file\nq:\tquit");
+                  
+               };
+            	
         }
+    	sc.close();
        
     }
-
  
     // implement other methods as necessary
 
+    public int containsFile(int index) {
+    	if (this.FILE_VECTOR[index] == 1) {
+    		return this.peerID;
+    	} else {
+    		return -1;
+    	}
+    	
+    }
+}
+
+class ClientPacketHandler implements Runnable {
+	Client client;
+	ClientPacketHandler(Client client) {
+		this.client = client;
+	}
+	@Override
+	public void run() {
+		// TODO Auto-generated method stub
+		Packet p;
+        while (true){
+            try { 
+                p = (Packet) this.client.inputStream.readObject();
+                eventHandler(p);
+            }
+            catch (Exception e) {
+            	break;
+            }
+
+        }
+	}
+
+	private void eventHandler(Packet p) {
+		// TODO Auto-generated method stub
+		int event_type = p.event_type;
+        switch (event_type) {
+	        case 2: {
+	        	System.out.println("User #" + p.peerID + " has packet " + p.req_file_index);
+	        }
+        	case 6: {
+	        	try {
+	        		System.out.println("Server is asking to quit");
+					client.s.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+        	}
+        }
+	}
+	
 }
